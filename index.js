@@ -71,6 +71,40 @@ app.get('/files', (req, res) => {
     });
 });
 
+app.post('/files', (req, res) => {
+    var form = new formidable.IncomingForm();
+    form.parse(req, (err, fields, files) => {
+        if (err) return res.status(400).send(err);
+        const token = JSON.parse(req.headers.token);
+        if (token == null) return res.status(400).send('Token not found');
+        oAuth2Client.setCredentials(token);
+        const drive = google.drive({ version: "v3", auth: oAuth2Client });
+        const fileMetadata = {
+            name: files.file.name,
+        };
+        const media = {
+            mimeType: files.file.type,
+            body: fs.createReadStream(files.file.path),
+        };
+        drive.files.create(
+            {
+                resource: fileMetadata,
+                media: media,
+                fields: "id",
+            },
+            (err, file) => {
+                oAuth2Client.setCredentials(null);
+                if (err) {
+                    console.error(err);
+                    res.status(400).send(err)
+                } else {
+                    res.send('Successful')
+                }
+            }
+        );
+    });
+});
+
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server Started ${PORT}`));
